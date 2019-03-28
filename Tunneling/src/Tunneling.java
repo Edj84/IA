@@ -8,97 +8,106 @@
  * Segue o codigo. Bom estudo a todos!!!
  */
 import java.util.Random;
+
+import com.sun.javafx.css.CalculatedValue;
 public class Tunneling {
     public final static int SIZE = 21; //total de cargas
-    public final static int TAM = 11;   //tamanho da populaçao: quantidade de soluçoes
-    public final static int MAX = 50;  //numero maximo de geraçoes (iteraçoes)
+    public static int temperatura = 500; //numero maximo de geraçoes (iteraçoes)
+    public static Random r = new Random();
+    public static int[] aptidoes = new int[temperatura];
+    public static int melhor, pior; 
     
     public static void main(String[] args) {
-        Random r = new Random();
-        int[] cargas = {10,52,50,20,5,15,11,3,4,18,28,16,9,31,3,8,12,7,11,3,5}; //cargas definidas em aula 
-        int[][] populacao = new int [TAM][SIZE+1];                       //populaçao atual: contem os cromossomos (soluçoes candidatas)
-        int[][] populacaoIntermediaria = new int [TAM][SIZE+1];          //populaçao intermediaria: corresponde a populaçao em construçao 
-                                                                         //Obs: A ultima coluna de cada linha da matriz e para armazenar o valor da funçao de aptidao,
-                                                                         //     que indica o quao boa eh a soluçao
+        int[] cargas = {10,52,50,20,5,15,11,3,4,18,28,16,9,31,3,8,12,7,11,3,5};  
+        int[] estadoAtual = iniciar(SIZE);
+    	funcaoDeAptidao(estadoAtual, cargas);
+        int aptidaoAtual = estadoAtual[SIZE-1];
+        melhor = aptidaoAtual;
+        pior = aptidaoAtual;
+        int[] estadoSeguinte; 
+        
+        //Obs: A ultima posição do vetor de estado armazena o valor da funçao de aptidao, que indica o quao boa eh a soluçao
                                                                          
         //===========> Ciclo do AG         
         System.out.println("=================================================================");
         System.out.println("Encontrando a melhor distribuiçao usando Algoritmo de Tempered Tunneling");
         System.out.println("=================================================================");
-        inicializaPopulacao(r, populacao);   //cria soluçoes aleatoriamente
         
-        for(int geracao = 0; geracao<MAX; geracao++) {
-            System.out.println("Geraçao:" + geracao);
-            calculaFuncoesDeAptidao(populacao, cargas); 
-            int melhor = pegaAltaTerra(populacao, populacaoIntermediaria); //highlander, Vulgo elitismo
-            if(populacaoIntermediaria[0][SIZE] ==0) {
-                printaMatriz(populacao);
-                System.out.println(">>>> Achou a melhor distribuiçao: ");
-                solucaoOtima(populacaoIntermediaria,cargas);
-                break;
-            }
+        while(temperatura > 0 || estadoAtual[SIZE-1] == 0) {
+        	
+        	estadoSeguinte = randomizar(estadoAtual);
+        	funcaoDeAptidao(estadoAtual, cargas);
+        	funcaoDeAptidao(estadoSeguinte,cargas);
+        	
+        	//Armazena a aptidão do estado atual em um vetor para conseguir exibir posteriormente de que forma ela evoluiu
+        	aptidoes[500-temperatura] = aptidaoAtual;
+        	
+        	System.out.println("Estado atual " +  exibeStatus(estadoAtual));
+        	System.out.println("Aptidão " + aptidaoAtual);
+        	System.out.println("Temperatura " + temperatura);
+        	
+        	boolean mudouEstado = false;
+        	
+        	if(estadoAtual[SIZE-1] > estadoSeguinte[SIZE-1]) { 
+        		estadoAtual = estadoSeguinte;
+        		mudouEstado = true;
+        	}
+        		
+        	else if (r.nextInt(2) < Math.exp(-1/temperatura)) {
+        		estadoAtual = estadoSeguinte;
+        		mudouEstado = true;
+        	}
+        	
+        	if(mudouEstado) {
+        		aptidaoAtual = estadoAtual[SIZE-1];
+        		
+        		if(melhor > aptidaoAtual)
+        			melhor = aptidaoAtual;
+        		if(pior < aptidaoAtual)
+        			pior = aptidaoAtual;
+        		
+        		System.out.println("Estado mudou para " +  exibeStatus(estadoAtual));
+            	System.out.println("Aptidão " + aptidaoAtual);
+        	}
+        	
+        	temperatura--;
+        }
         
-            printaMatriz(populacao);
-        }
-    }
-
-    /**
-     * Decodifica melhor soluçao
-     */
-    private static void solucaoOtima(int[][] populacaoIntermediaria, int []cargas){
-                System.out.println("Pessoa 0: ");
-                int soma = 0;
-                for(int j=0; j<SIZE; j++){
-                    if(populacaoIntermediaria[0][j]==0) {
-                        System.out.print(cargas[j]+ " ");
-                        soma = soma + cargas[j];
-                    }
-                }
-                System.out.println(" - Total: " + soma);
-                System.out.println("Pessoa 1: ");
-                soma = 0;
-                for(int j=0; j<SIZE; j++){
-                    if(populacaoIntermediaria[0][j]==1) {
-                        System.out.print(cargas[j] + " ");
-                        soma = soma + cargas[j];
-                    }
-                }
-                System.out.println(" - Total: " + soma);
-    }
-    /**
-     * Printa populaçao na tela
-     */
-    private static void printaMatriz(int[][] populacao) {
-        System.out.println("__________________________________________________________________");
-        for(int i = 0; i < populacao.length; i++) {
-            System.out.print("(" + i + ") ");
-            for(int j = 0; j < populacao[i].length-1; j++) {
-                System.out.print(populacao[i][j] + " ");
-            }
-            System.out.println(" Aptidao: " + populacao[i][populacao[i].length-1]);
-        }
-        System.out.println("__________________________________________________________________");
-    }
-
-    /**
-     * Gera populaçao inicial: conjunto de soluçoes candidatas
-     */
-    private static void inicializaPopulacao(Random r, int[][] populacao) {
-        for(int i = 0; i < populacao.length; i++) {
-            for(int j = 0; j < populacao[i].length -1; j++) {
-                populacao[i][j] = r.nextInt(2);
-            }
-        }
-    }
+        System.out.println("=================================================================");
+        System.out.println("Resultado: " + exibeStatus(estadoAtual) +" - Aptidão " + estadoAtual[SIZE-1]);
+        System.out.println("Melhor: " + melhor);
+        System.out.println("Pior: " + pior);
+        System.out.println("=================================================================");     
     
-    /**
-     * Calcula a funçao de aptidao para a populaçao atual
-     */
-    private static void calculaFuncoesDeAptidao(int[][] populacao, int[] cargas){
-        for(int i = 0; i < populacao.length; i++) {
-            funcaoDeAptidao(populacao[i], cargas);
+    }            
+    
+    private static int[] iniciar(int tamanho) {
+    	
+    	int[] aux = new int[tamanho];
+        	
+        for(int i = 0; i < tamanho-1; i++) {
+        	int pessoa = r.nextInt(2);
+        	aux[i] = pessoa;
+        	System.out.println("Carga " + (i+1) + " distribuída para pessoa " + pessoa);
         }
-    }
+        
+        pior = aux[SIZE-1];
+        pior = aux[SIZE-1];
+        	
+        return aux;
+	}
+    
+    private static int[] randomizar(int[] estadoAtual) {
+		
+    	int[] aux = estadoAtual.clone();
+    	int pos = r.nextInt(SIZE-1); 
+    	
+    	if(aux[pos] == 0) 
+    		aux[pos] = 1;
+    	else aux[pos] = 0;   	
+    	
+    	return aux;
+	}
     
     /**
      * Funçao de aptidao: heuristica que estima a qualidade de uma soluçao
@@ -117,25 +126,15 @@ public class Tunneling {
         linha[i] = Math.abs(somaZero - somaUm);     
     }
     
-    /** 
-     * Seleçao por elitismo. Encontra a melhor soluçao e copia para a populaçao intermediaria
-     */
-    private static int pegaAltaTerra(int[][] populacao, int[][] populacaoIntermediaria) {
-        int highlander = 0;     
-        int menor = populacao[0][SIZE];
-        
-        for(int i=1; i<populacao.length; i++) {
-            if(populacao[i][SIZE] < menor) {
-                menor = populacao[i][SIZE];
-                highlander = i;
-            }
-        }
-        System.out.println("Seleçao por elitismo - melhor dessa geraçao: " + highlander);
-        
-        for(int i=0; i<SIZE+1; i++) {
-            populacaoIntermediaria[0][i] = populacao[highlander][i];
-        }
-        return highlander;
-    }    
-    
+    private static String exibeStatus(int[] estado) {
+    	
+    	StringBuilder sb = new StringBuilder();
+    	
+    	for(int i = 0; i < estado.length-1; i++) {
+    		sb.append(estado[i] + " ");
+    	}
+    	
+    	return sb.toString();
+    }
+     
 }
